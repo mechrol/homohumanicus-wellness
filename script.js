@@ -47,7 +47,7 @@
     gemini: {
       label: 'Google Gemini (darmowy)',
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       keyUrl: 'https://aistudio.google.com/apikey',
       keyHint: 'Darmowy klucz z Google AI Studio',
       webSearch: false
@@ -103,10 +103,14 @@
       var raw = localStorage.getItem(CFG_KEY);
       if (!raw) return defaultCfg();
       var c = JSON.parse(raw);
+      var prov = c.provider || 'gemini';
+      var preset = PROVIDERS[prov] || PROVIDERS.gemini;
       return {
-        provider: c.provider || 'gemini',
-        baseUrl: c.baseUrl || '',
-        model: c.model || '',
+        provider: prov,
+        // Fall back to the provider preset when nothing usable was stored,
+        // so a stale/empty entry can never produce a broken request URL.
+        baseUrl: c.baseUrl || preset.baseUrl,
+        model: c.model || preset.model,
         apiKey: sessionApiKey,
         webSearch: !!c.webSearch
       };
@@ -571,6 +575,10 @@
             html = String(answer).replace(/\n/g, '<br>');
           } else if (err === 'no-key') {
             html = 'Aby odpowiadać na pytania, połącz własne API modelu: kliknij \u2699 w nagłówku czatu i wklej klucz API. Instrukcja znajduje się w panelu ustawień.';
+          } else if (err && err.indexOf('api:') === 0) {
+            html = 'Model zwrócił błąd: ' + err.slice(4) + '. Sprawdź klucz API w ustawieniach \u2699.';
+          } else if (err && err.indexOf('network:') === 0) {
+            html = 'Błąd połączenia z modelem: ' + err.slice(8) + '. Sprawdź internet i spróbuj ponownie.';
           } else {
             html = (err && err.indexOf('api:') === 0)
               ? 'Model zwrócił błąd: ' + err.slice(4) + '. Sprawdź klucz API w ustawieniach \u2699.'
