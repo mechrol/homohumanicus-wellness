@@ -642,5 +642,22 @@
       // let's talk form (removed - replaced by newsletter script)
     </script>
     <script src="script.js?v6"></script>
+    <script>
+      // Click-to-play: swap a video thumbnail for the Vimeo player on demand.
+      (function () {
+        document.querySelectorAll('.video-thumb').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var src = btn.getAttribute('data-src');
+            if (!src) return;
+            var iframe = document.createElement('iframe');
+            iframe.setAttribute('src', src);
+            iframe.setAttribute('title', btn.getAttribute('aria-label') || 'Video');
+            iframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+            iframe.setAttribute('allowfullscreen', '');
+            btn.parentNode.replaceChild(iframe, btn);
+          });
+        });
+      })();
+    </script>
   </body>
 </html>
