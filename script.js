@@ -4,10 +4,16 @@
    Loaded by every page. Initializes on DOM-ready so it works
    regardless of script placement / defer / server timing.
 
-   Knowledge base: answers questions from baza-index.json
-   (generated from the markdown files in /baza by
-   build-knowledge-index.js). Grounded, cited responses with a
-   graceful fallback to the contact form when nothing matches.
+   RAG (Retrieval-Augmented Generation):
+   - The knowledge base (baza-index.json, generated from /baza by
+     build-knowledge-index.js) RETRIEVES the right context.
+   - A free-tier LLM (Google Gemini) writes a concrete, focused
+     answer using ONLY that context — it never invents facts and
+     only answers the question asked.
+   - The API key lives in localStorage only (never in the repo).
+     Get a free key at https://aistudio.google.com/apikey
+   - If no key is set, it gracefully falls back to the keyword
+     answer, then to the contact-form message.
    ============================================================ */
 (function () {
   'use strict';
@@ -24,6 +30,19 @@
 
   var INDEX_URL = 'baza-index.json';
   var knowledge = null; // [{source, heading, text, norm}]
+
+  // ---- LLM (RAG) configuration ----
+  // Free tier: Google Gemini. CORS-friendly, works from a static page.
+  var LLM_MODEL = 'gemini-2.0-flash';
+  var LLM_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + LLM_MODEL + ':generateContent';
+  var LLM_KEY_STORE = 'oly_llm_key';
+
+  function getApiKey() {
+    try { return localStorage.getItem(LLM_KEY_STORE) || ''; } catch (e) { return ''; }
+  }
+  function setApiKey(k) {
+    try { localStorage.setItem(LLM_KEY_STORE, k); } catch (e) {}
+  }
 
   // Polish stopwords — ignored when scoring so common words do not
   // dominate the match.
@@ -124,7 +143,7 @@
       .trim();
   }
 
-  // Build a grounded answer from the top matching chunks.
+  // Build a grounded answer from the top matching chunks (fallback path).
   function answerFromKnowledge(query) {
     var hits = search(query, 3);
     if (!hits.length) return null;
@@ -143,6 +162,53 @@
     return parts.join('\n\n');
   }
 
+  // ---- LLM (RAG) layer ----
+
+  // Ask the free-tier LLM to answer ONLY from the provided context.
+  function callLLM(prompt, cb) {
+    var key = getApiKey();
+    if (!key) { cb(null); return; }
+    fetch(LLM_URL + '?key=' + encodeURIComponent(key), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 600 }
+      })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var text = data && data.candidates && data.candidates[0] &&
+                   data.candidates[0].content && data.candidates[0].content.parts &&
+                   data.candidates[0].content.parts[0].text;
+        cb(text || null);
+      })
+      .catch(function () { cb(null); });
+  }
+
+  // RAG: retrieve the right context, then let the LLM write a focused
+  // answer that only addresses the question and only uses the context.
+  function answerWithLLM(query, cb) {
+    var hits = search(query, 4);
+    if (!hits.length) { cb(null); return; }
+
+    var context = hits.map(function (h, i) {
+      return '[Fragment ' + (i + 1) + ' — źródło: ' + h.source + ']\n' + clean(h.text);
+    }).join('\n\n');
+
+    var prompt =
+      'Jesteś asystentem HomoHumanicus. Odpowiadaj WYŁĄCZNIE na podstawie poniższego KONTEKSTU z bazy wiedzy.\n' +
+      'Zasady:\n' +
+      '- Odpowiadaj tylko na postawione pytanie — konkretnie i zwięźle.\n' +
+      '- Używaj WYŁĄCZNIE informacji z kontekstu. Nie dodawaj nic spoza niego.\n' +
+      '- Jeśli kontekst nie zawiera odpowiedzi, napisz: "Nie znalazłem tej informacji w bazie wiedzy."\n' +
+      '- Na końcu podaj źródło w formacie: (Źródło: nazwa_pliku)\n\n' +
+      'KONTEKST:\n' + context + '\n\n' +
+      'PYTANIE UŻYTKOWNIKA: ' + query;
+
+    callLLM(prompt, cb);
+  }
+
   function init() {
     var launcher = el('button', {
       class: 'oly-launcher', type: 'button',
@@ -157,8 +223,21 @@
     var header = el('div', { class: 'oly-head' });
     header.appendChild(el('span', { class: 'oly-dot' }));
     header.appendChild(el('strong', { text: 'HomoHumanicus · Asystent' }));
+    var settingsBtn = el('button', { class: 'oly-settings', type: 'button', 'aria-label': 'Ustawienia', title: 'Klucz API (LLM)', text: '\u2699' });
+    header.appendChild(settingsBtn);
     var closeBtn = el('button', { class: 'oly-close', type: 'button', 'aria-label': 'Zamknij czat', text: '\u00d7' });
     header.appendChild(closeBtn);
+
+    // Settings panel — paste the free Gemini API key here.
+    var settings = el('div', { class: 'oly-settings-panel', 'aria-hidden': 'true' });
+    settings.appendChild(el('p', { class: 'oly-settings-title', text: 'Klucz API (darmowy Gemini)' }));
+    var keyInput = el('input', { type: 'password', class: 'oly-key-input', placeholder: 'Wklej klucz API…', 'aria-label': 'Klucz API' });
+    keyInput.value = getApiKey();
+    var saveKey = el('button', { type: 'button', class: 'oly-key-save', text: 'Zapisz' });
+    var keyHint = el('a', { class: 'oly-key-hint', href: 'https://aistudio.google.com/apikey', target: '_blank', rel: 'noopener', text: 'Jak zdobyć darmowy klucz →' });
+    settings.appendChild(keyInput);
+    settings.appendChild(saveKey);
+    settings.appendChild(keyHint);
 
     var body = el('div', { class: 'oly-body' });
     body.appendChild(el('p', {
@@ -173,6 +252,7 @@
     footer.appendChild(sendBtn);
 
     panel.appendChild(header);
+    panel.appendChild(settings);
     panel.appendChild(body);
     panel.appendChild(footer);
 
@@ -183,8 +263,17 @@
       '.oly-panel.oly-open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}',
       '.oly-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid ' + LINE + ';background:' + BG + ';color:' + TEXT + ';font:600 15px/1 "DM Sans",Arial,sans-serif}',
       '.oly-dot{width:10px;height:10px;border-radius:50%;background:' + LIME + ';box-shadow:0 0 12px rgba(201,242,75,.7)}',
-      '.oly-close{margin-left:auto;border:none;background:transparent;color:' + MUTED + ';font-size:22px;cursor:pointer;line-height:1}',
+      '.oly-settings{margin-left:auto;border:none;background:transparent;color:' + MUTED + ';font-size:16px;cursor:pointer;line-height:1;padding:2px 4px}',
+      '.oly-settings:hover{color:' + LIME + '}',
+      '.oly-close{border:none;background:transparent;color:' + MUTED + ';font-size:22px;cursor:pointer;line-height:1}',
       '.oly-close:hover{color:' + TEXT + '}',
+      '.oly-settings-panel{display:none;flex-direction:column;gap:8px;padding:12px 16px;border-bottom:1px solid ' + LINE + ';background:' + BG + '}',
+      '.oly-settings-panel.oly-open{display:flex}',
+      '.oly-settings-title{margin:0;color:' + MUTED + ';font:600 12px/1.3 "DM Sans",Arial,sans-serif}',
+      '.oly-key-input{flex:1;background:' + SURFACE + ';border:1px solid ' + LINE + ';border-radius:10px;color:' + TEXT + ';padding:9px 11px;font:400 13px "DM Sans",Arial,sans-serif;outline:none}',
+      '.oly-key-input:focus{border-color:' + LIME + '}',
+      '.oly-key-save{border:none;cursor:pointer;background:' + LIME + ';color:#0a0a0c;border-radius:10px;padding:9px 12px;font:700 13px "DM Sans",Arial,sans-serif}',
+      '.oly-key-hint{color:' + LIME + ';font:500 12px "DM Sans",Arial,sans-serif;text-decoration:underline;text-underline-offset:3px}',
       '.oly-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:' + BG + '}',
       '.oly-msg{max-width:82%;padding:10px 14px;border-radius:16px;font:400 14px/1.5 "DM Sans",Arial,sans-serif;white-space:pre-wrap;word-wrap:break-word}',
       '.oly-bot{background:' + SURFACE + ';color:' + TEXT + ';border:1px solid ' + LINE + ';border-bottom-left-radius:4px;align-self:flex-start}',
@@ -213,6 +302,17 @@
     });
     closeBtn.addEventListener('click', function () { setOpen(false); });
 
+    // Toggle the API-key settings panel.
+    settingsBtn.addEventListener('click', function () {
+      settings.classList.toggle('oly-open');
+      if (settings.classList.contains('oly-open')) keyInput.focus();
+    });
+    saveKey.addEventListener('click', function () {
+      setApiKey(keyInput.value.trim());
+      settings.classList.remove('oly-open');
+      addBotMessage('Klucz API zapisany w tej przegl\u0105darce. Odpowiedzi b\u0119d\u0105 teraz generowane przez model LLM na podstawie bazy wiedzy.');
+    });
+
     function addBotMessage(html) {
       var p = el('p', { class: 'oly-msg oly-bot', html: html });
       body.appendChild(p);
@@ -223,15 +323,23 @@
     function botReply(query) {
       var typing = addBotMessage('<span class="oly-typing">…</span>');
       loadKnowledge(function () {
-        var answer = answerFromKnowledge(query);
-        var html;
-        if (answer) {
-          html = answer.replace(/\n/g, '<br>');
-        } else {
-          html = 'Dzi\u0119ki za wiadomo\u015b\u0107! Nie znalaz\u0142em tej informacji w mojej bazie wiedzy. Aby\u015bmy mogli Ci pom\u00f3c, przejd\u017a do formularza kontaktowego \u2014 tam odpowiemy indywidualnie i dobierzemy technologi\u0119 do Twoich potrzeb.';
-        }
-        typing.innerHTML = html;
-        body.scrollTop = body.scrollHeight;
+        // RAG path: LLM writes a focused answer from the retrieved context.
+        answerWithLLM(query, function (llmAnswer) {
+          var html;
+          if (llmAnswer) {
+            html = llmAnswer.replace(/\n/g, '<br>');
+          } else {
+            // Fallback: keyword answer, then contact-form message.
+            var answer = answerFromKnowledge(query);
+            if (answer) {
+              html = answer.replace(/\n/g, '<br>');
+            } else {
+              html = 'Dzi\u0119ki za wiadomo\u015b\u0107! Nie znalaz\u0142em tej informacji w mojej bazie wiedzy. Aby\u015bmy mogli Ci pom\u00f3c, przejd\u017a do formularza kontaktowego \u2014 tam odpowiemy indywidualnie i dobierzemy technologi\u0119 do Twoich potrzeb.';
+            }
+          }
+          typing.innerHTML = html;
+          body.scrollTop = body.scrollHeight;
+        });
       });
     }
 
