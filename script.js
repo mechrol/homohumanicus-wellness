@@ -15,7 +15,10 @@
      knowledge and (if enabled) live internet search.
    - Answers are presented as the assistant's own words — no source
      citations are shown to the visitor.
-   - The API key lives in localStorage only (never in the repo).
+   - The API key is held IN MEMORY for the current Q&A session only.
+     It is never written to localStorage and is wiped the moment the
+     chat is closed (or the page unloads), so it is not visible to
+     other users of the same device.
    ============================================================ */
 (function () {
   'use strict';
@@ -33,8 +36,11 @@
   var INDEX_URL = 'baza-index.json';
   var knowledge = null; // [{source, heading, text, norm}]
 
-  // ---- LLM configuration (stored in localStorage) ----
+  // ---- LLM configuration ----
+  // Non-secret settings (provider, model, web search) may persist.
+  // The API KEY is session-only: kept in memory, never persisted.
   var CFG_KEY = 'oly_llm_cfg';
+  var sessionApiKey = '';
 
   // Provider presets. Each maps to an endpoint + request shape.
   var PROVIDERS = {
@@ -101,13 +107,24 @@
         provider: c.provider || 'gemini',
         baseUrl: c.baseUrl || '',
         model: c.model || '',
-        apiKey: c.apiKey || '',
+        apiKey: sessionApiKey,
         webSearch: !!c.webSearch
       };
     } catch (e) { return defaultCfg(); }
   }
   function setCfg(c) {
-    try { localStorage.setItem(CFG_KEY, JSON.stringify(c)); } catch (e) {}
+    // Keep the secret in memory only — never write it to storage.
+    sessionApiKey = c.apiKey || '';
+    try {
+      localStorage.setItem(CFG_KEY, JSON.stringify({
+        provider: c.provider, baseUrl: c.baseUrl, model: c.model, webSearch: c.webSearch
+      }));
+    } catch (e) {}
+  }
+
+  // Wipe the API key from memory (called when the Q&A session ends).
+  function clearSessionKey() {
+    sessionApiKey = '';
   }
 
   // Polish stopwords — ignored when scoring so common words do not
@@ -404,8 +421,9 @@
       '4. Zaznacz „Wyszukiwanie w internecie", jeśli chcesz, aby asystent ' +
       'odpowiadał też na pytania spoza bazy wiedzy.<br>' +
       '5. Kliknij „Zapisz i połącz".<br><br>' +
-      'Klucz zostaje wyłącznie w Twojej przeglądarce (localStorage) — nie jest ' +
-      'wysyłany na nasz serwer ani zapisywany w projekcie.';
+      'Klucz jest przechowywany TYLKO w pamięci tej sesji Q&A — nie jest zapisywany ' +
+      'w przeglądarce ani w projekcie. Znika automatycznie po zamknięciu czatu, ' +
+      'więc kolejna osoba na tym urządzeniu musi podać własny klucz.';
     settings.appendChild(help);
 
     var body = el('div', { class: 'oly-body' });
@@ -495,13 +513,20 @@
         webSearch: webChk.checked
       });
       settings.classList.remove('oly-open');
-      addBotMessage('Gotowe — połączenie z modelem zapisane. Odpowiedzi będą teraz generowane przez wybrany model, a baza wiedzy posłuży jako kontekst ekspercki.');
+      addBotMessage('Gotowe — połączono z modelem na czas tej sesji. Odpowiedzi będą generowane przez wybrany model, a baza wiedzy posłuży jako kontekst ekspercki. Klucz zniknie po zamknięciu czatu.');
     });
 
     function setOpen(open) {
       panel.classList.toggle('oly-open', open);
       panel.setAttribute('aria-hidden', String(!open));
-      if (open) setTimeout(function () { input.focus(); }, 120);
+      if (open) {
+        setTimeout(function () { input.focus(); }, 120);
+      } else {
+        // Q&A session ended — wipe the API key so it is not left
+        // behind for the next person using this device.
+        clearSessionKey();
+        keyInput.value = '';
+      }
     }
 
     launcher.addEventListener('click', function () {
@@ -555,6 +580,10 @@
       if (e.key === 'Enter') send();
     });
   }
+
+  // Safety net: wipe the key if the page is closed or reloaded.
+  window.addEventListener('beforeunload', function () { clearSessionKey(); });
+  window.addEventListener('pagehide', function () { clearSessionKey(); });
 
   // Initialize as soon as the DOM is ready (body must exist).
   if (document.readyState === 'loading') {
