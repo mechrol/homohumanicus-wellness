@@ -151,6 +151,30 @@
    'gdzie kiedy ile jaki jaka jakie cena ceny oraz lub albo').split(' ')
     .forEach(function (w) { STOP[w] = true; });
 
+  // Query words that should also match their common synonyms in the corpus,
+  // so "ile kosztuje" finds a chunk headed "Cennik", and "kontakt" finds
+  // "telefon"/"adres". Each key expands to the terms actually used in the docs.
+  var SYNONYMS = {
+    kosztuje: ['cena', 'cennik', 'koszt'],
+    kosztuja: ['cena', 'cennik', 'koszt'],
+    koszt: ['cena', 'cennik'],
+    cena: ['cennik', 'koszt'],
+    ceny: ['cena', 'cennik'],
+    cennik: ['cena', 'koszt'],
+    ile: ['cena', 'cennik'],
+    kontakt: ['telefon', 'adres', 'whatsapp', 'email'],
+    kontaktowe: ['telefon', 'adres', 'whatsapp', 'email'],
+    telefon: ['kontakt', 'whatsapp'],
+    adres: ['kontakt', 'biuro'],
+    kupic: ['zamowienie', 'zamow'],
+    zamowic: ['zamowienie', 'zamow'],
+    partnerski: ['afiliacyjn', 'prowizj', 'wspolpraca'],
+    wspolpraca: ['partnerski', 'afiliacyjn'],
+    zarabiac: ['prowizj', 'wynagrodzen', 'plan'],
+    dostawa: ['wysylka', 'wysylki'],
+    wysylka: ['dostawa', 'przesylki']
+  };
+
   function el(tag, attrs, children) {
     var node = document.createElement(tag);
     if (attrs) {
@@ -196,10 +220,18 @@
   // Return the best matching chunks for a query.
   function search(query, topK) {
     topK = topK || 3;
-    var qwords = normalize(query).split(' ').filter(function (w) {
+    var base = normalize(query).split(' ').filter(function (w) {
       return w.length >= 2 && !STOP[w];
     });
-    if (!qwords.length) return [];
+    if (!base.length) return [];
+    // Expand each query word with its synonyms so a question phrased
+    // differently still reaches the chunk that answers it.
+    var qwords = [];
+    for (var qi = 0; qi < base.length; qi++) {
+      qwords.push(base[qi]);
+      var syn = SYNONYMS[base[qi]];
+      if (syn) { for (var si = 0; si < syn.length; si++) qwords.push(syn[si]); }
+    }
 
     var scored = [];
     for (var i = 0; i < knowledge.length; i++) {
@@ -222,7 +254,10 @@
                    (matched === 1 && qwords[0].length >= 5);
       if (accept) {
         var lenBonus = Math.min(6, Math.floor((c.text || '').length / 200));
-        scored.push({ chunk: c, score: matched * 10 + headHits * 5 + srcHits * 20 + lenBonus });
+        // A heading that names the query terms is a strong signal that this
+        // chunk is ABOUT them (e.g. "Cennik produktow"), so it outweighs a
+        // mere filename coincidence. Filename matches stay a light nudge.
+        scored.push({ chunk: c, score: matched * 10 + headHits * 12 + srcHits * 4 + lenBonus });
       }
     }
 
@@ -245,14 +280,19 @@
 
   // Build the expert context from the knowledge base (no citations shown).
   function buildContext(query) {
-    var hits = search(query, 4);
+    var hits = search(query, 6);
     if (!hits.length) return '';
     var parts = [];
     var seen = {};
+    var perSource = {};
     for (var i = 0; i < hits.length; i++) {
       var h = hits[i];
       var snippet = clean(h.text);
       if (!snippet || snippet.length < 40 || seen[h.source]) continue;
+      // Keep at most 2 chunks per source so one long file cannot crowd out
+      // the other relevant documents (e.g. a pricing table from another file).
+      perSource[h.source] = (perSource[h.source] || 0) + 1;
+      if (perSource[h.source] > 2) continue;
       seen[h.source] = true;
       parts.push(snippet);
     }
