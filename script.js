@@ -340,12 +340,39 @@
     }
   }
 
+  // Retry a request when the provider reports a rate limit (HTTP 429).
+  // Free tiers allow only a handful of requests per minute, so a burst of
+  // questions would otherwise surface a raw quota error to the visitor.
+  // We wait for the provider's own retry hint (or a short backoff) and try
+  // again a couple of times before giving up.
+  function fetchWithRetry(url, opts, attempt, cb) {
+    attempt = attempt || 0;
+    var MAX_ATTEMPTS = 3;
+    fetch(url, opts)
+      .then(function (r) {
+        return r.json().then(function (data) { return { ok: r.ok, status: r.status, data: data }; });
+      })
+      .then(function (res) {
+        if (res.status === 429 && attempt < MAX_ATTEMPTS - 1) {
+          // Honour the provider's suggested delay when it gives one.
+          var waitMs = 3000 * (attempt + 1);
+          var msg = (res.data && res.data.error && res.data.error.message) || '';
+          var m = msg.match(/retry in ([0-9.]+)s/i);
+          if (m) { waitMs = Math.min(20000, Math.ceil(parseFloat(m[1]) * 1000) + 500); }
+          setTimeout(function () { fetchWithRetry(url, opts, attempt + 1, cb); }, waitMs);
+          return;
+        }
+        cb(res);
+      })
+      .catch(function (err) { cb({ ok: false, status: 0, data: null, netError: err }); });
+  }
+
   function callGemini(baseUrl, model, key, systemPrompt, userQuery, cb) {
     // Google now issues "auth keys" (prefix AQ.) alongside legacy AIza keys.
     // Both are accepted via the x-goog-api-key header, which is the
     // recommended way to pass a Gemini key (it never lands in a URL/log).
     var url = baseUrl + '/models/' + encodeURIComponent(model) + ':generateContent';
-    fetch(url, {
+    fetchWithRetry(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
@@ -353,25 +380,21 @@
         contents: [{ role: 'user', parts: [{ text: userQuery }] }],
         generationConfig: { temperature: 0.4, maxOutputTokens: 800 }
       })
-    })
-      .then(function (r) {
-        return r.json().then(function (data) { return { ok: r.ok, status: r.status, data: data }; });
-      })
-      .then(function (res) {
-        var data = res.data;
-        var text = data && data.candidates && data.candidates[0] &&
-                   data.candidates[0].content && data.candidates[0].content.parts &&
-                   data.candidates[0].content.parts[0].text;
-        if (text) { cb(text, null); return; }
-        // Surface the real reason instead of failing silently.
-        var msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
-        cb(null, 'api: ' + msg);
-      })
-      .catch(function (err) { cb(null, 'network: ' + (err && err.message ? err.message : 'error')); });
+    }, 0, function (res) {
+      if (res.netError) { cb(null, 'network: ' + (res.netError.message || 'error')); return; }
+      var data = res.data;
+      var text = data && data.candidates && data.candidates[0] &&
+                 data.candidates[0].content && data.candidates[0].content.parts &&
+                 data.candidates[0].content.parts[0].text;
+      if (text) { cb(text, null); return; }
+      if (res.status === 429) { cb(null, 'rate-limit'); return; }
+      var msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
+      cb(null, 'api: ' + msg);
+    });
   }
 
   function callOpenAICompatible(baseUrl, model, key, systemPrompt, userQuery, cb) {
-    fetch(baseUrl + '/chat/completions', {
+    fetchWithRetry(baseUrl + '/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({
@@ -383,24 +406,21 @@
         temperature: 0.4,
         max_tokens: 800
       })
-    })
-      .then(function (r) {
-        return r.json().then(function (data) { return { ok: r.ok, status: r.status, data: data }; });
-      })
-      .then(function (res) {
-        var data = res.data;
-        var text = data && data.choices && data.choices[0] &&
-                   data.choices[0].message && data.choices[0].message.content;
-        if (text) { cb(text, null); return; }
-        var msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
-        cb(null, 'api: ' + msg);
-      })
-      .catch(function (err) { cb(null, 'network: ' + (err && err.message ? err.message : 'error')); });
+    }, 0, function (res) {
+      if (res.netError) { cb(null, 'network: ' + (res.netError.message || 'error')); return; }
+      var data = res.data;
+      var text = data && data.choices && data.choices[0] &&
+                 data.choices[0].message && data.choices[0].message.content;
+      if (text) { cb(text, null); return; }
+      if (res.status === 429) { cb(null, 'rate-limit'); return; }
+      var msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
+      cb(null, 'api: ' + msg);
+    });
   }
 
   // OpenAI Responses API with the built-in web_search tool (live internet).
   function callOpenAIResponses(baseUrl, model, key, systemPrompt, userQuery, cb) {
-    fetch(baseUrl + '/responses', {
+    fetchWithRetry(baseUrl + '/responses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({
@@ -409,25 +429,27 @@
         input: userQuery,
         tools: [{ type: 'web_search' }]
       })
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var text = '';
-        if (data && data.output_text) {
-          text = data.output_text;
-        } else if (data && data.output) {
-          for (var i = 0; i < data.output.length; i++) {
-            var o = data.output[i];
-            if (o.type === 'message' && o.content) {
-              for (var j = 0; j < o.content.length; j++) {
-                if (o.content[j].type === 'output_text') text += o.content[j].text;
-              }
+    }, 0, function (res) {
+      if (res.netError) { cb(null, 'network: ' + (res.netError.message || 'error')); return; }
+      if (res.status === 429) { cb(null, 'rate-limit'); return; }
+      var data = res.data;
+      var text = '';
+      if (data && data.output_text) {
+        text = data.output_text;
+      } else if (data && data.output) {
+        for (var i = 0; i < data.output.length; i++) {
+          var o = data.output[i];
+          if (o.type === 'message' && o.content) {
+            for (var j = 0; j < o.content.length; j++) {
+              if (o.content[j].type === 'output_text') text += o.content[j].text;
             }
           }
         }
-        cb(text || null, text ? null : 'empty');
-      })
-      .catch(function () { cb(null, 'error'); });
+      }
+      if (text) { cb(text, null); return; }
+      var msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
+      cb(null, 'api: ' + msg);
+    });
   }
 
   function init() {
@@ -626,6 +648,8 @@
             html = String(answer).replace(/\n/g, '<br>');
           } else if (err === 'no-key') {
             html = 'Aby odpowiadać na pytania, połącz własne API modelu: kliknij \u2699 w nagłówku czatu i wklej klucz API. Instrukcja znajduje się w panelu ustawień.';
+          } else if (err === 'rate-limit') {
+            html = 'Asystent jest chwilowo zajęty (zbyt wiele pytań w krótkim czasie). Odczekaj około minuty i spróbuj ponownie.';
           } else if (err && err.indexOf('api:') === 0) {
             html = 'Model zwrócił błąd: ' + err.slice(4) + '. Sprawdź klucz API w ustawieniach \u2699.';
           } else if (err && err.indexOf('network:') === 0) {
