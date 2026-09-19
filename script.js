@@ -286,24 +286,33 @@
   }
 
   function callGemini(baseUrl, model, key, systemPrompt, userQuery, cb) {
-    var url = baseUrl + '/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key);
+    // Google now issues "auth keys" (prefix AQ.) alongside legacy AIza keys.
+    // Both are accepted via the x-goog-api-key header, which is the
+    // recommended way to pass a Gemini key (it never lands in a URL/log).
+    var url = baseUrl + '/models/' + encodeURIComponent(model) + ':generateContent';
     fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userQuery }] }],
         generationConfig: { temperature: 0.4, maxOutputTokens: 800 }
       })
     })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
+      .then(function (r) {
+        return r.json().then(function (data) { return { ok: r.ok, status: r.status, data: data }; });
+      })
+      .then(function (res) {
+        var data = res.data;
         var text = data && data.candidates && data.candidates[0] &&
                    data.candidates[0].content && data.candidates[0].content.parts &&
                    data.candidates[0].content.parts[0].text;
-        cb(text || null, text ? null : 'empty');
+        if (text) { cb(text, null); return; }
+        // Surface the real reason instead of failing silently.
+        var msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
+        cb(null, 'api: ' + msg);
       })
-      .catch(function () { cb(null, 'error'); });
+      .catch(function (err) { cb(null, 'network: ' + (err && err.message ? err.message : 'error')); });
   }
 
   function callOpenAICompatible(baseUrl, model, key, systemPrompt, userQuery, cb) {
@@ -320,13 +329,18 @@
         max_tokens: 800
       })
     })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
+      .then(function (r) {
+        return r.json().then(function (data) { return { ok: r.ok, status: r.status, data: data }; });
+      })
+      .then(function (res) {
+        var data = res.data;
         var text = data && data.choices && data.choices[0] &&
                    data.choices[0].message && data.choices[0].message.content;
-        cb(text || null, text ? null : 'empty');
+        if (text) { cb(text, null); return; }
+        var msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
+        cb(null, 'api: ' + msg);
       })
-      .catch(function () { cb(null, 'error'); });
+      .catch(function (err) { cb(null, 'network: ' + (err && err.message ? err.message : 'error')); });
   }
 
   // OpenAI Responses API with the built-in web_search tool (live internet).
@@ -558,7 +572,11 @@
           } else if (err === 'no-key') {
             html = 'Aby odpowiadać na pytania, połącz własne API modelu: kliknij \u2699 w nagłówku czatu i wklej klucz API. Instrukcja znajduje się w panelu ustawień.';
           } else {
-            html = 'Nie udało się teraz połączyć z modelem. Sprawdź klucz API w ustawieniach \u2699 lub spróbuj ponownie za chwilę.';
+            html = (err && err.indexOf('api:') === 0)
+              ? 'Model zwrócił błąd: ' + err.slice(4) + '. Sprawdź klucz API w ustawieniach \u2699.'
+              : (err && err.indexOf('network:') === 0)
+                ? 'Błąd połączenia z modelem: ' + err.slice(8) + '. Sprawdź internet i spróbuj ponownie.'
+                : 'Nie udało się teraz połączyć z modelem. Sprawdź klucz API w ustawieniach \u2699 lub spróbuj ponownie za chwilę.';
           }
           typing.innerHTML = html;
           body.scrollTop = body.scrollHeight;
