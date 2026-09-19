@@ -94,6 +94,16 @@
     }
   };
 
+  // Models that the provider no longer serves. A stored config naming one of
+  // these is stale and must be migrated to the current preset, otherwise the
+  // request 404s and the chat looks broken.
+  var RETIRED_MODELS = {
+    'gemini-2.0-flash': 'gemini-2.5-flash',
+    'gemini-2.0-flash-lite': 'gemini-2.5-flash',
+    'gemini-1.5-flash': 'gemini-2.5-flash',
+    'gemini-1.5-pro': 'gemini-2.5-flash'
+  };
+
   function defaultCfg() {
     return { provider: 'gemini', baseUrl: PROVIDERS.gemini.baseUrl, model: PROVIDERS.gemini.model, apiKey: '', webSearch: false };
   }
@@ -105,12 +115,15 @@
       var c = JSON.parse(raw);
       var prov = c.provider || 'gemini';
       var preset = PROVIDERS[prov] || PROVIDERS.gemini;
+      // Migrate a retired model name to the current one.
+      var model = c.model || preset.model;
+      if (RETIRED_MODELS[model]) model = RETIRED_MODELS[model];
       return {
         provider: prov,
         // Fall back to the provider preset when nothing usable was stored,
         // so a stale/empty entry can never produce a broken request URL.
         baseUrl: c.baseUrl || preset.baseUrl,
-        model: c.model || preset.model,
+        model: model,
         apiKey: sessionApiKey,
         webSearch: !!c.webSearch
       };
