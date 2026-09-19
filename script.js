@@ -283,17 +283,15 @@
     var hits = search(query, 6);
     if (!hits.length) return '';
     var parts = [];
-    var seen = {};
     var perSource = {};
     for (var i = 0; i < hits.length; i++) {
       var h = hits[i];
       var snippet = clean(h.text);
-      if (!snippet || snippet.length < 40 || seen[h.source]) continue;
+      if (!snippet || snippet.length < 40) continue;
       // Keep at most 2 chunks per source so one long file cannot crowd out
       // the other relevant documents (e.g. a pricing table from another file).
       perSource[h.source] = (perSource[h.source] || 0) + 1;
       if (perSource[h.source] > 2) continue;
-      seen[h.source] = true;
       parts.push(snippet);
     }
     return parts.join('\n\n');
