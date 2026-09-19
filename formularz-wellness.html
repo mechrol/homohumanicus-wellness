@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formularz doboru technologii wellness — Homo Humanicus</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.68/vfs_fonts.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap');
+
+  :root{
+    --bg: #060607;
+    --surface: #101014;
+    --surface-2: #15151a;
+    --text: #f4f5f1;
+    --muted: #9a9da4;
+    --amber: #c9f24b;
+    --teal: #c9f24b;
+    --line: rgba(255,255,255,.12);
+    --danger: #e0704c;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+  h1,h2,h3{
+    font-family:'Playfair Display', serif;
+    font-weight:600;
+    margin:0 0 8px;
+    line-height:1.2;
+  }
+  .hero{
+    padding: 8px 0 28px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 28px;
+    position:relative;
+  }
+  .hero h1{ font-size: 2rem; }
+  .hero p{ color: var(--muted); max-width: 52ch; margin: 10px 0 0; }
+  .wave{ width:100%; height:46px; display:block; margin-top:18px; }
+  .wave path{ stroke: var(--teal); stroke-width:1.4; fill:none; opacity:.75;}
+  .wave path.p2{ stroke: var(--amber); opacity:.5; }
+
+  .steps{
+    display:flex; gap:6px; margin-bottom: 30px;
+  }
+  .steps .dot{
+    flex:1; height:4px; border-radius:2px; background: var(--line);
+    transition: background .25s ease;
+  }
+  .steps .dot.active{ background: var(--teal); }
+  .steps .dot.done{ background: var(--amber); }
+
+  .panel{ display:none; }
+  .panel.active{ display:block; animation: fade .3s ease; }
+  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+  .eyebrow{ color: var(--amber); font-size:.85rem; margin-bottom:4px; }
+  .panel h2{ font-size:1.4rem; margin-bottom:6px; }
+  .panel > .lead{ color: var(--muted); margin-bottom: 22px; font-size:.95rem; max-width:56ch; }
+
+  fieldset{ border:none; padding:0; margin:0 0 24px; }
+  legend{ font-weight:600; margin-bottom:10px; padding:0; font-size:.98rem; }
+  .hint{ color: var(--muted); font-size:.85rem; margin: -4px 0 10px; }
+
+  .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  @media (max-width:480px){ .grid{ grid-template-columns:1fr; } }
+
+  label.opt{
+    display:flex; align-items:flex-start; gap:10px;
+    border:1px solid var(--line); border-radius:8px;
+    padding:12px 14px; cursor:pointer; background: var(--surface);
+    transition: border-color .15s ease, background .15s ease;
+    font-size:.92rem;
+  }
+  label.opt:hover{ border-color: var(--teal); }
+  label.opt input{ margin-top:2px; accent-color: var(--teal); }
+  label.opt.checked{ border-color: var(--teal); background: var(--surface-2); }
+
+  .scale{ display:flex; gap:6px; margin-top:6px; }
+  .scale button{
+    flex:1; padding:10px 0; border-radius:6px; border:1px solid var(--line);
+    background: var(--surface); color: var(--muted); cursor:pointer; font-size:.85rem;
+  }
+  .scale button.sel{ background: var(--teal); color:#0f1a1a; border-color:var(--teal); font-weight:600; }
+
+  textarea, input[type=text]{
+    width:100%; background: var(--surface); border:1px solid var(--line);
+    border-radius:8px; color: var(--text); padding:12px 14px; font-family:inherit; font-size:.92rem;
+    resize:vertical;
+  }
+  textarea:focus, input:focus{ outline:2px solid var(--teal); outline-offset:1px; }
+
+  .caution{
+    border:1px solid var(--danger); background: rgba(201,107,74,.08);
+    border-radius:10px; padding:16px 18px; margin-bottom:22px;
+  }
+  .caution .eyebrow{ color: var(--danger); }
+  .caution ul{ margin:8px 0 0; padding-left:20px; }
+  .caution li{ margin-bottom:4px; font-size:.92rem; }
+
+  .nav{ display:flex; justify-content:space-between; margin-top:34px; gap:12px; }
+  button.btn{
+    font-family:inherit; font-size:.92rem; font-weight:600; padding:12px 22px;
+    border-radius:8px; cursor:pointer; border:1px solid transparent;
+  }
+  .btn-primary{ background: var(--teal); color:#0f1a1a; }
+  .btn-primary:disabled{ background: var(--line); color: var(--muted); cursor:not-allowed; }
+  .btn-ghost{ background:transparent; border-color: var(--line); color: var(--text); }
+
+  .summary-card{
+    background: var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:20px 22px; margin-bottom:16px;
+  }
+  .summary-card h3{ font-size:1.05rem; color: var(--amber); margin-bottom:10px; }
+  .summary-card dl{ margin:0; }
+  .summary-card dt{ color: var(--muted); font-size:.82rem; margin-top:10px; }
+  .summary-card dd{ margin:2px 0 0; font-size:.94rem; }
+
+  .disclaimer{
+    font-size:.82rem; color: var(--muted); border-top:1px solid var(--line);
+    margin-top: 40px; padding-top: 18px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow" style="color:var(--teal)">Homo Humanicus — dobór technologii wellness</div>
+    <h1>Formularz kwalifikacji do sesji PEMF / THz</h1>
+    <p>Cztery krótkie części pomagają dopasować urządzenia paraterapeutyczne (pole PEMF, fale terahercowe) do Twojej sytuacji — w duchu regeneracji, rewitalizacji i przywództwa dla siebie lub dla osób, którymi się opiekujesz.</p>
+    <svg class="wave" viewBox="0 0 600 46" preserveAspectRatio="none">
+      <path d="M0 23 C 40 5, 80 41, 120 23 S 200 5, 240 23 S 320 41, 360 23 S 440 5, 480 23 S 560 41, 600 23" />
+      <path class="p2" d="M0 30 C 50 12, 90 48, 140 30 S 220 12, 270 30 S 350 48, 400 30 S 480 12, 530 30 S 590 48, 600 30" />
+    </svg>
+  </div>
+
+  <div class="steps">
+    <div class="dot active" data-step="0"></div>
+    <div class="dot" data-step="1"></div>
+    <div class="dot" data-step="2"></div>
+    <div class="dot" data-step="3"></div>
+  </div>
+
+  <form id="form">
+
+    <!-- KROK 1: KOMPETENCJE / PUNKT WYJŚCIA -->
+    <section class="panel active" data-panel="0">
+      <div class="eyebrow">Co mogę zrobić</div>
+      <h2>Twój punkt wyjścia</h2>
+      <p class="lead">To nie jest wywiad medyczny — nie stawiamy diagnoz. Chodzi o zebranie obrazu Twojego bieżącego samopoczucia, żeby dobrze dopasować rytm i cel sesji wellness.</p>
+
+      <fieldset>
+        <legend>Jak oceniasz swój poziom energii w ciągu ostatnich dwóch tygodni?</legend>
+        <div class="scale" data-name="energia">
+          <button type="button" data-val="1">Bardzo niski</button>
+          <button type="button" data-val="2">Niski</button>
+          <button type="button" data-val="3">Umiarkowany</button>
+          <button type="button" data-val="4">Dobry</button>
+          <button type="button" data-val="5">Bardzo dobry</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Jak oceniasz jakość snu?</legend>
+        <div class="scale" data-name="sen">
+          <button type="button" data-val="1">Bardzo słaba</button>
+          <button type="button" data-val="2">Słaba</button>
+          <button type="button" data-val="3">Przeciętna</button>
+          <button type="button" data-val="4">Dobra</button>
+          <button type="button" data-val="5">Bardzo dobra</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Odczuwany poziom napięcia / stresu na co dzień</legend>
+        <div class="scale" data-name="stres">
+          <button type="button" data-val="1">Minimalny</button>
+          <button type="button" data-val="2">Niski</button>
+          <button type="button" data-val="3">Umiarkowany</button>
+          <button type="button" data-val="4">Wysoki</button>
+          <button type="button" data-val="5">Bardzo wysoki</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Obszary ciała lub funkcji, które chciał(a)byś wesprzeć regeneracyjnie</legend>
+        <div class="hint">Zaznacz tyle, ile pasuje — to informacja o kierunku, nie diagnoza.</div>
+        <div class="grid">
+          <label class="opt"><input type="checkbox" name="obszary" value="mięśnie i stawy"><span>Mięśnie i stawy</span></label>
+          <label class="opt"><input type="checkbox" name="obszary" value="krążenie"><span>Krążenie / uczucie ciężkości</span></label>
+          <label class="opt"><input type="checkbox" name="obszary" value="koncentracja"><span>Koncentracja i jasność umysłu</span></label>
+          <label class="opt"><input type="checkbox" name="obszary" value="regeneracja po wysiłku"><span>Regeneracja po wysiłku</span></label>
+          <label class="opt"><input type="checkbox" name="obszary" value="odporność na napięcie"><span>Odporność na napięcie</span></label>
+          <label class="opt"><input type="checkbox" name="obszary" value="ogólna witalność"><span>Ogólna witalność</span></label>
+        </div>
+      </fieldset>
+    </section>
+
+    <!-- KROK 2: MOŻLIWOŚCI TECHNOLOGII -->
+    <section class="panel" data-panel="1">
+      <div class="eyebrow">Co technologia mogłaby zrobić</div>
+      <h2>Kierunek wsparcia</h2>
+      <p class="lead">Urządzenia PEMF (pulsujące pole elektromagnetyczne) i THz (fale terahercowe) stosuje się w formule wellness jako wsparcie relaksu, regeneracji i codziennej rutyny — nie jako leczenie chorób. Wybierz, co najlepiej opisuje Twój cel.</p>
+
+      <fieldset>
+        <legend>Główny cel sesji</legend>
+        <div class="grid">
+          <label class="opt"><input type="radio" name="cel_glowny" value="relaks i wyciszenie"><span>Relaks i wyciszenie po dniu</span></label>
+          <label class="opt"><input type="radio" name="cel_glowny" value="regeneracja po wysiłku"><span>Regeneracja po wysiłku fizycznym</span></label>
+          <label class="opt"><input type="radio" name="cel_glowny" value="wsparcie codziennej witalności"><span>Wsparcie codziennej witalności</span></label>
+          <label class="opt"><input type="radio" name="cel_glowny" value="rutyna profilaktyczna"><span>Regularna rutyna profilaktyczna</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Preferowana częstotliwość korzystania</legend>
+        <div class="grid">
+          <label class="opt"><input type="radio" name="czestotliwosc" value="codziennie krótko"><span>Codziennie, krótkie sesje</span></label>
+          <label class="opt"><input type="radio" name="czestotliwosc" value="kilka razy w tygodniu"><span>Kilka razy w tygodniu</span></label>
+          <label class="opt"><input type="radio" name="czestotliwosc" value="okazjonalnie"><span>Okazjonalnie, w razie potrzeby</span></label>
+          <label class="opt"><input type="radio" name="czestotliwosc" value="nie wiem"><span>Jeszcze nie wiem</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Czy sesje mają służyć Tobie, czy osobom pod Twoją opieką?</legend>
+        <div class="hint">Chodzi o kontekst „przywództwa dla siebie lub dla innych” — np. opieka nad bliskimi, zespołem, podopiecznymi.</div>
+        <div class="grid">
+          <label class="opt"><input type="radio" name="dla_kogo" value="dla siebie"><span>Dla siebie</span></label>
+          <label class="opt"><input type="radio" name="dla_kogo" value="dla bliskich"><span>Dla bliskich / rodziny</span></label>
+          <label class="opt"><input type="radio" name="dla_kogo" value="dla podopiecznych"><span>Dla podopiecznych / zespołu</span></label>
+          <label class="opt"><input type="radio" name="dla_kogo" value="jeszcze nie wiem"><span>Jeszcze nie wiem</span></label>
+        </div>
+      </fieldset>
+    </section>
+
+    <!-- KROK 3: CHĘCI / MOTYWACJA -->
+    <section class="panel" data-panel="2">
+      <div class="eyebrow">Co chcę robić</div>
+      <h2>Motywacja i zaangażowanie</h2>
+      <p class="lead">Skuteczność wsparcia wellness zależy od regularności. Ta część pomaga ocenić realny poziom zaangażowania, żeby zaproponować plan, który da się utrzymać.</p>
+
+      <fieldset>
+        <legend>Ile czasu tygodniowo realnie możesz przeznaczyć na sesje?</legend>
+        <div class="grid">
+          <label class="opt"><input type="radio" name="czas" value="do 30 min"><span>Do 30 minut</span></label>
+          <label class="opt"><input type="radio" name="czas" value="30-60 min"><span>30–60 minut</span></label>
+          <label class="opt"><input type="radio" name="czas" value="1-3 godziny"><span>1–3 godziny</span></label>
+          <label class="opt"><input type="radio" name="czas" value="ponad 3 godziny"><span>Ponad 3 godziny</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Co najbardziej Cię motywuje do rozpoczęcia?</legend>
+        <textarea name="motywacja" rows="3" placeholder="Np. chcę lepiej spać, szybciej wracać do formy po treningu, mieć więcej energii dla rodziny..."></textarea>
+      </fieldset>
+
+      <fieldset>
+        <legend>Czy wcześniej korzystałeś/aś z podobnych technologii wellness?</legend>
+        <div class="grid">
+          <label class="opt"><input type="radio" name="doswiadczenie" value="tak, regularnie"><span>Tak, regularnie</span></label>
+          <label class="opt"><input type="radio" name="doswiadczenie" value="tak, sporadycznie"><span>Tak, sporadycznie</span></label>
+          <label class="opt"><input type="radio" name="doswiadczenie" value="nie, to pierwszy raz"><span>Nie, to pierwszy raz</span></label>
+        </div>
+      </fieldset>
+    </section>
+
+    <!-- KROK 4: ODPOWIEDZIALNOŚĆ / BEZPIECZEŃSTWO -->
+    <section class="panel" data-panel="3">
+      <div class="eyebrow">Co powinniśmy zrobić</div>
+      <h2>Bezpieczeństwo i odpowiedzialność</h2>
+      <p class="lead">Ta część chroni Ciebie i osoby, którym ewentualnie towarzyszysz. Nie jesteśmy placówką medyczną — przy realnych problemach zdrowotnych zawsze najpierw lekarz.</p>
+
+      <div class="caution">
+        <div class="eyebrow">Ważne przeciwwskazania</div>
+        <p style="margin:6px 0 0; font-size:.92rem;">Zaznacz, jeśli którykolwiek punkt Cię dotyczy — w takim przypadku sesja PEMF/THz wymaga wcześniejszej konsultacji lekarskiej lub nie jest zalecana.</p>
+        <ul>
+          <li>Rozrusznik serca lub inny aktywny implant elektroniczny</li>
+          <li>Ciąża</li>
+          <li>Padaczka lub choroby neurologiczne z napadami</li>
+          <li>Ostry stan zapalny, gorączka lub świeży uraz</li>
+          <li>Choroba nowotworowa w trakcie leczenia</li>
+        </ul>
+      </div>
+
+      <fieldset>
+        <legend>Zaznacz przeciwwskazania, które Cię dotyczą (jeśli żadne — zostaw puste)</legend>
+        <div class="grid">
+          <label class="opt"><input type="checkbox" name="przeciwwskazania" value="rozrusznik/implant"><span>Rozrusznik / implant elektroniczny</span></label>
+          <label class="opt"><input type="checkbox" name="przeciwwskazania" value="ciaza"><span>Ciąża</span></label>
+          <label class="opt"><input type="checkbox" name="przeciwwskazania" value="padaczka"><span>Padaczka / choroba neurologiczna</span></label>
+          <label class="opt"><input type="checkbox" name="przeciwwskazania" value="stan ostry"><span>Ostry stan zapalny / gorączka / świeży uraz</span></label>
+          <label class="opt"><input type="checkbox" name="przeciwwskazania" value="onkologia"><span>Choroba nowotworowa w leczeniu</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Czy pozostajesz obecnie pod opieką lekarską z powodu zdiagnozowanej choroby?</legend>
+        <div class="grid">
+          <label class="opt"><input type="radio" name="opieka_lekarska" value="tak"><span>Tak</span></label>
+          <label class="opt"><input type="radio" name="opieka_lekarska" value="nie"><span>Nie</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Dane kontaktowe <span style="font-weight:400; color:var(--muted);">(opcjonalnie — potrzebne tylko, jeśli zechcesz przesłać raport administratorowi)</span></legend>
+        <div class="grid">
+          <input type="text" id="kontakt_imie" placeholder="Imię">
+          <input type="text" id="kontakt_email" placeholder="E-mail kontaktowy">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Potwierdzenia</legend>
+        <label class="opt" style="margin-bottom:10px;">
+          <input type="checkbox" id="ack1" required>
+          <span>Rozumiem, że urządzenia PEMF/THz to technologie wellness wspierające relaks i regenerację, a nie sprzęt medyczny służący do leczenia chorób.</span>
+        </label>
+        <label class="opt">
+          <input type="checkbox" id="ack2" required>
+          <span>W przypadku zaznaczonego przeciwwskazania lub wątpliwości skonsultuję się z lekarzem przed rozpoczęciem sesji.</span>
+        </label>
+      </fieldset>
+    </section>
+
+    <!-- PODSUMOWANIE -->
+    <section class="panel" data-panel="4">
+      <div class="eyebrow">Podsumowanie</div>
+      <h2>Twój profil wellness</h2>
+      <p class="lead">Poniżej zbiorczy obraz odpowiedzi. Ten formularz wspiera dobór ogólnego kierunku sesji — nie zastępuje konsultacji medycznej ani nie stanowi diagnozy.</p>
+      <div id="summary"></div>
+
+      <div class="summary-card" id="sendCard">
+        <h3>Prześlij raport administratorowi projektu (opcjonalnie)</h3>
+        <p style="margin:0 0 14px; font-size:.9rem; color:var(--muted);">Możesz pobrać podsumowanie jako PDF na własny użytek albo dobrowolnie przesłać je administratorowi na adres <strong>januszjankra@gmail.com</strong> — pomoże to przygotować konsultację. Zaznaczenie zgody nie jest wymagane do skorzystania z formularza.</p>
+        <label class="opt" style="margin-bottom:6px;">
+          <input type="checkbox" id="consentSend">
+          <span>Wyrażam zgodę na przesłanie podsumowania moich odpowiedzi (wraz z danymi kontaktowymi, jeśli je podałem/am) na adres januszjankra@gmail.com w celu przygotowania konsultacji.</span>
+        </label>
+        <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-ghost" id="downloadPdfBtn">Pobierz PDF</button>
+          <button type="button" class="btn btn-primary" id="sendAdminBtn">Wyślij do administratora</button>
+        </div>
+        <p id="sendStatus" style="font-size:.83rem; color:var(--muted); margin-top:12px;"></p>
+      </div>
+    </section>
+
+    <div class="nav">
+      <button type="button" class="btn btn-ghost" id="backBtn">Wstecz</button>
+      <button type="button" class="btn btn-primary" id="nextBtn">Dalej</button>
+    </div>
+  </form>
+
+  <div class="disclaimer">
+    Formularz ma charakter informacyjno-kwalifikacyjny w obszarze wellness i nie zastępuje konsultacji medycznej. Urządzenia paraterapeutyczne PEMF i THz nie służą do diagnozowania ani leczenia chorób. W przypadku dolegliwości zdrowotnych skonsultuj się z lekarzem.
+  </div>
+
+</div>
+
+<script>
+  const panels = document.querySelectorAll('.panel');
+  const dots = document.querySelectorAll('.steps .dot');
+  const nextBtn = document.getElementById('nextBtn');
+  const backBtn = document.getElementById('backBtn');
+  let step = 0;
+  const totalSteps = panels.length; // includes summary as last
+
+  const state = { scales: {} };
+
+  document.querySelectorAll('.scale').forEach(scale => {
+    scale.addEventListener('click', e => {
+      if(e.target.tagName !== 'BUTTON') return;
+      [...scale.children].forEach(b => b.classList.remove('sel'));
+      e.target.classList.add('sel');
+      state.scales[scale.dataset.name] = e.target.textContent;
+    });
+  });
+
+  document.querySelectorAll('label.opt').forEach(lbl => {
+    const input = lbl.querySelector('input');
+    input.addEventListener('change', () => {
+      if(input.type === 'radio'){
+        document.querySelectorAll(`input[name="${input.name}"]`).forEach(r => r.closest('.opt').classList.remove('checked'));
+      }
+      lbl.classList.toggle('checked', input.checked);
+    });
+  });
+
+  function showStep(i){
+    panels.forEach((p, idx) => p.classList.toggle('active', idx === i));
+    dots.forEach((d, idx) => {
+      d.classList.toggle('active', idx === i);
+      d.classList.toggle('done', idx < i);
+    });
+    backBtn.style.visibility = i === 0 ? 'hidden' : 'visible';
+    nextBtn.textContent = i === panels.length - 2 ? 'Zobacz podsumowanie' : (i === panels.length - 1 ? 'Zakończ' : 'Dalej');
+    if(i === panels.length - 1){ buildSummary(); }
+  }
+
+  function collect(name){
+    const els = document.querySelectorAll(`[name="${name}"]`);
+    const vals = [];
+    els.forEach(el => { if(el.checked) vals.push(el.value); });
+    return vals;
+  }
+  function collectRadio(name){
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : '—';
+  }
+
+  function buildSummary(){
+    const obszary = collect('obszary').join(', ') || '—';
+    const przeciw = collect('przeciwwskazania');
+    const motyw = document.querySelector('[name="motywacja"]').value || '—';
+
+    const html = `
+      <div class="summary-card">
+        <h3>Punkt wyjścia</h3>
+        <dl>
+          <dt>Energia</dt><dd>${state.scales.energia || '—'}</dd>
+          <dt>Sen</dt><dd>${state.scales.sen || '—'}</dd>
+          <dt>Stres</dt><dd>${state.scales.stres || '—'}</dd>
+          <dt>Obszary do wsparcia</dt><dd>${obszary}</dd>
+        </dl>
+      </div>
+      <div class="summary-card">
+        <h3>Kierunek wsparcia</h3>
+        <dl>
+          <dt>Cel główny</dt><dd>${collectRadio('cel_glowny')}</dd>
+          <dt>Częstotliwość</dt><dd>${collectRadio('czestotliwosc')}</dd>
+          <dt>Dla kogo</dt><dd>${collectRadio('dla_kogo')}</dd>
+        </dl>
+      </div>
+      <div class="summary-card">
+        <h3>Zaangażowanie</h3>
+        <dl>
+          <dt>Czas tygodniowo</dt><dd>${collectRadio('czas')}</dd>
+          <dt>Motywacja</dt><dd>${motyw}</dd>
+          <dt>Wcześniejsze doświadczenie</dt><dd>${collectRadio('doswiadczenie')}</dd>
+        </dl>
+      </div>
+      <div class="summary-card" style="border-color:var(--danger)">
+        <h3 style="color:var(--danger)">Bezpieczeństwo</h3>
+        <dl>
+          <dt>Zaznaczone przeciwwskazania</dt><dd>${przeciw.length ? przeciw.join(', ') : 'Brak zaznaczonych'}</dd>
+          <dt>Opieka lekarska</dt><dd>${collectRadio('opieka_lekarska')}</dd>
+        </dl>
+        ${przeciw.length ? '<p style="color:var(--danger); font-size:.88rem; margin-top:10px;">Skontaktuj się z lekarzem przed rozpoczęciem sesji — zaznaczono co najmniej jedno przeciwwskazanie.</p>' : ''}
+      </div>
+    `;
+    document.getElementById('summary').innerHTML = html;
+  }
+
+  nextBtn.addEventListener('click', () => {
+    if(step === panels.length - 2){
+      const ack1 = document.getElementById('ack1').checked;
+      const ack2 = document.getElementById('ack2').checked;
+      if(!ack1 || !ack2){
+        alert('Zaznacz oba potwierdzenia, aby przejść dalej.');
+        return;
+      }
+    }
+    if(step < panels.length - 1){ step++; showStep(step); window.scrollTo({top:0, behavior:'smooth'}); }
+  });
+  backBtn.addEventListener('click', () => {
+    if(step > 0){ step--; showStep(step); window.scrollTo({top:0, behavior:'smooth'}); }
+  });
+
+  // --- Generowanie PDF ---
+  function buildPdfDoc(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    // Osadzenie fontu Roboto (Unicode) — poprawne polskie znaki diakrytyczne (ą, ć, ę, ł, ń, ś, ż).
+    // Wbudowany 'helvetica' używa kodowania WinAnsi i gubi polskie litery, stąd konieczność fontu TTF.
+    let FONT = 'helvetica';
+    try {
+      const vfs = (window.pdfMake && window.pdfMake.vfs) || {};
+      if (vfs['Roboto-Regular.ttf'] && vfs['Roboto-Bold.ttf']) {
+        doc.addFileToVFS('Roboto-Regular.ttf', vfs['Roboto-Regular.ttf']);
+        doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+        doc.addFileToVFS('Roboto-Bold.ttf', vfs['Roboto-Bold.ttf']);
+        doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
+        if (vfs['Roboto-Italic.ttf']) {
+          doc.addFileToVFS('Roboto-Italic.ttf', vfs['Roboto-Italic.ttf']);
+          doc.addFont('Roboto-Italic.ttf', 'Roboto', 'italic');
+        }
+        FONT = 'Roboto';
+        doc.setFont(FONT, 'normal');
+      }
+    } catch (e) { /* pozostaje fallback helvetica */ }
+
+    const marginX = 18;
+    let y = 20;
+    const lineGap = 7;
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    function ensureSpace(extra){
+      if(y + extra > pageHeight - 18){ doc.addPage(); y = 20; }
+    }
+    function heading(text){
+      ensureSpace(12);
+      doc.setFont(FONT,'bold'); doc.setFontSize(13); doc.setTextColor(20,50,48);
+      doc.text(text, marginX, y); y += lineGap;
+    }
+    function row(label, value){
+      ensureSpace(lineGap);
+      doc.setFont(FONT,'bold'); doc.setFontSize(10); doc.setTextColor(60,60,60);
+      doc.text(label + ':', marginX, y);
+      doc.setFont(FONT,'normal'); doc.setTextColor(20,20,20);
+      const wrapped = doc.splitTextToSize(String(value || '—'), 120);
+      doc.text(wrapped, marginX + 62, y);
+      y += lineGap * Math.max(1, wrapped.length);
+    }
+
+    doc.setFont(FONT,'bold'); doc.setFontSize(17); doc.setTextColor(20,50,48);
+    doc.text('Raport wellness — dobór technologii PEMF/THz', marginX, y); y += 10;
+    doc.setFont(FONT,'normal'); doc.setFontSize(9); doc.setTextColor(110,110,110);
+    doc.text('Homo Humanicus — formularz konsultacyjny · ' + new Date().toLocaleDateString('pl-PL'), marginX, y); y += 12;
+
+    heading('Punkt wyjścia');
+    row('Energia', state.scales.energia);
+    row('Sen', state.scales.sen);
+    row('Stres', state.scales.stres);
+    row('Obszary do wsparcia', collect('obszary').join(', '));
+    y += 2;
+
+    heading('Kierunek wsparcia');
+    row('Cel główny', collectRadio('cel_glowny'));
+    row('Częstotliwość', collectRadio('czestotliwosc'));
+    row('Dla kogo', collectRadio('dla_kogo'));
+    y += 2;
+
+    heading('Zaangażowanie');
+    row('Czas tygodniowo', collectRadio('czas'));
+    row('Motywacja', document.querySelector('[name="motywacja"]').value);
+    row('Wcześniejsze doświadczenie', collectRadio('doswiadczenie'));
+    y += 2;
+
+    heading('Bezpieczeństwo');
+    const przeciw = collect('przeciwwskazania');
+    row('Przeciwwskazania', przeciw.length ? przeciw.join(', ') : 'Brak zaznaczonych');
+    row('Opieka lekarska', collectRadio('opieka_lekarska'));
+    y += 2;
+
+    heading('Dane kontaktowe (jeśli podane)');
+    row('Imię', document.getElementById('kontakt_imie').value);
+    row('E-mail', document.getElementById('kontakt_email').value);
+    y += 6;
+
+    ensureSpace(20);
+    doc.setFont(FONT,'italic'); doc.setFontSize(8.5); doc.setTextColor(120,120,120);
+    const disclaimer = 'Formularz ma charakter informacyjno-kwalifikacyjny w obszarze wellness i nie zastępuje konsultacji medycznej. Urządzenia paraterapeutyczne PEMF i THz nie służą do diagnozowania ani leczenia chorób. W przypadku dolegliwości zdrowotnych skonsultuj się z lekarzem.';
+    doc.text(doc.splitTextToSize(disclaimer, 174), marginX, y);
+
+    return doc;
+  }
+
+  document.getElementById('downloadPdfBtn').addEventListener('click', () => {
+    const doc = buildPdfDoc();
+    doc.save('raport-wellness-homohumanicus.pdf');
+  });
+
+  document.getElementById('sendAdminBtn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('sendStatus');
+    const consent = document.getElementById('consentSend').checked;
+    if(!consent){
+      statusEl.style.color = 'var(--danger)';
+      statusEl.textContent = 'Zaznacz zgodę powyżej, aby przesłać raport do administratora.';
+      return;
+    }
+    statusEl.style.color = 'var(--muted)';
+    statusEl.textContent = 'Wysyłanie...';
+
+    const doc = buildPdfDoc();
+    const pdfBase64 = doc.output('datauristring').split(',')[1];
+    const payload = {
+      to: 'januszjankra@gmail.com',
+      imie: document.getElementById('kontakt_imie').value,
+      email: document.getElementById('kontakt_email').value,
+      dane: {
+        energia: state.scales.energia, sen: state.scales.sen, stres: state.scales.stres,
+        obszary: collect('obszary'), cel_glowny: collectRadio('cel_glowny'),
+        czestotliwosc: collectRadio('czestotliwosc'), dla_kogo: collectRadio('dla_kogo'),
+        czas: collectRadio('czas'), motywacja: document.querySelector('[name="motywacja"]').value,
+        doswiadczenie: collectRadio('doswiadczenie'), przeciwwskazania: collect('przeciwwskazania'),
+        opieka_lekarska: collectRadio('opieka_lekarska')
+      },
+      pdfBase64
+    };
+
+    // Docelowy endpoint backendu (patrz specyfikacja dla dewelopera).
+    // Dopóki endpoint nie jest wdrożony, formularz automatycznie
+    // przechodzi na bezpieczny wariant zapasowy: pobiera PDF lokalnie
+    // i otwiera klienta e-mail z gotową wiadomością do ręcznego załączenia pliku.
+    try{
+      const res = await fetch('/api/send-consultation-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if(!res.ok) throw new Error('Endpoint niedostępny');
+      statusEl.style.color = 'var(--teal)';
+      statusEl.textContent = 'Raport wysłany do administratora. Dziękujemy!';
+    }catch(err){
+      doc.save('raport-wellness-homohumanicus.pdf');
+      const subject = encodeURIComponent('Raport wellness — konsultacja PEMF/THz');
+      const body = encodeURIComponent(
+        'Cześć,\n\nPrzesyłam wynik formularza konsultacyjnego (PDF pobrał się automatycznie — proszę załączyć go ręcznie do tej wiadomości).\n\n' +
+        'Imię: ' + (document.getElementById('kontakt_imie').value || '—') + '\n' +
+        'E-mail: ' + (document.getElementById('kontakt_email').value || '—') + '\n' +
+        'Cel główny: ' + collectRadio('cel_glowny') + '\n' +
+        'Dla kogo: ' + collectRadio('dla_kogo') + '\n'
+      );
+      window.location.href = `mailto:januszjankra@gmail.com?subject=${subject}&body=${body}`;
+      statusEl.style.color = 'var(--amber)';
+      statusEl.textContent = 'Automatyczna wysyłka jest jeszcze niedostępna: pobraliśmy PDF na Twoje urządzenie i otworzyliśmy szkic e-maila — dołącz plik ręcznie i wyślij.';
+    }
+  });
+
+  showStep(0);
+</script>
+</body>
+</html>

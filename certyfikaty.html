@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="HomoHumanicus — certyfikaty potwierdzające jakość rozwiązań OlyNation." />
+    <meta name="theme-color" content="#060607" />
+    <title>Certyfikaty | HomoHumanicus | OlyNation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .page-header{padding:90px 0 24px}
+      .page-header .lead{max-width:640px;margin:16px 0 0;font-size:1.05rem}
+      .certificates{padding:40px 0 100px}
+      .certificate-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+      .certificate-card{margin:0;padding:20px;border:1px solid var(--line-strong);border-radius:var(--radius-lg);background:var(--surface)}
+      .certificate-card img{display:block;width:100%;height:auto;border-radius:12px}
+      .certificate-card figcaption{margin-top:14px;color:var(--muted);font-size:.9rem;text-align:center}
+      .back-link{display:inline-flex;align-items:center;gap:8px;margin-top:34px;color:var(--text);font-weight:700}
+      .back-link:hover{color:var(--lime)}
+      .footer-inner{width:var(--shell);margin:0 auto;padding:30px 0 60px;border-top:1px solid var(--line);color:var(--muted);font-size:.78rem}
+      .footer-inner .footer-row{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:18px}
+      .footer-note{max-width:900px;margin:0;line-height:1.6}
+      @media (max-width:760px){.page-header{padding:60px 0 10px}.certificates{padding:30px 0 70px}}
+    </style>
+  </head>
+  <body>
+    <div class="grid-bg" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="HomoHumanicus — strona główna">
+        <span class="brand-mark" aria-hidden="true">H</span>
+        <span>Homo<span>Humanicus</span></span>
+      </a>
+      <button class="menu-button" type="button" aria-expanded="false" aria-controls="menu">Menu</button>
+      <nav id="menu" class="main-nav" aria-label="Nawigacja">
+        <a href="index.html#o-nas">Podejście</a>
+        <a href="index.html#technologia">Technologia</a>
+        <a href="index.html#produkty">Produkty</a>
+        <a href="cennik.html">Cennik</a>
+        <a href="certyfikaty.html" class="is-current">Certyfikaty</a>
+        <a href="index.html#kontakt" class="nav-cta">Rozmowa Chat!</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="page-header section-shell">
+        <p class="eyebrow">Jakość i wiarygodność</p>
+        <h2>Certyfikaty.</h2>
+        <p class="lead">Dokumenty potwierdzające jakość i zgodność naszych rozwiązań. Ta strona będzie sukcesywnie uzupełniana o kolejne certyfikaty w miarę ich udostępniania.</p>
+      </section>
+
+      <section class="certificates section-shell">
+        <div class="certificate-grid">
+          <figure class="certificate-card">
+            <img src="https://nai.info.pl/logo/certyfikat.jpg" alt="Przykładowy certyfikat" loading="lazy" />
+            <figcaption>Certyfikat przykładowy — pełna lista dokumentów wkrótce.</figcaption>
+          </figure>
+        </div>
+        <a class="back-link" href="index.html">← Wróć do strony głównej</a>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-inner">
+        <div class="footer-row">
+          <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">H</span><span>Homo<span>Humanicus</span></span></a>
+          <a href="index.html" style="color:var(--text);font-weight:700">Strona główna</a>
+        </div>
+        <p class="footer-note">Wszystkie dokumenty powiązane z projektem są dostępne na <a class="footer-link" href="https://olylife.com/Main/En/products.php" target="_blank" rel="noopener noreferrer">stronie produktowej</a> oraz w grupie społecznościowej użytkowników OlyNation <a class="footer-link" href="https://portal.aitribes.app/ft/aKr28" target="_blank" rel="noopener noreferrer">na Polskim Serwisie Informacyjnym „Akademia Wellness”.</a> Zobacz <a class="footer-link" href="https://jankra.thefrequencyawakening.com/privacy-policy" target="_blank" rel="noopener noreferrer">Politykę prywatności</a>.</p>
+      </div>
+    </footer>
+
+    <!-- START Complyfi Popup Pixel Code -->
+    <script src='https://complyfy.s3.amazonaws.com/js/cookies.js?tm' data-id='tm'></script>
+    <!-- End Complyfi Popup Pixel Code -->
+    <script>
+      const menuButton = document.querySelector('.menu-button');
+      const menu = document.querySelector('.main-nav');
+      if (menuButton && menu) {
+        menuButton.addEventListener('click', () => {
+          const open = menu.classList.toggle('is-open');
+          menuButton.setAttribute('aria-expanded', String(open));
+        });
+        menu.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
+          menu.classList.remove('is-open');
+          menuButton.setAttribute('aria-expanded', 'false');
+        }));
+      }
+    </script>
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="HomoHumanicus — cennik w PLN według bieżącego kursu NBP, z kosztem transportu i czasem dostawy." />
+    <meta name="theme-color" content="#060607" />
+    <title>HomoHumanicus | Cennik i zamówienie</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      /* page-specific: cennik */
+      .hero-block{padding:80px 0 44px}
+      .hero-block h1{font-size:clamp(2.3rem,4.6vw,3.6rem);max-width:760px}
+      .hero-block .lead{max-width:640px;margin:18px 0 0;font-size:1.05rem}
+      .rate-badge{display:inline-flex;align-items:center;gap:10px;margin-top:26px;padding:12px 18px;border-radius:14px;background:var(--surface);border:1px solid var(--line-strong);font-size:.88rem;color:var(--muted)}
+      .rate-badge strong{color:var(--text)}
+      .rate-badge a{color:var(--lime);text-decoration:underline}
+      .rate-dot{width:9px;height:9px;border-radius:50%;background:var(--lime);flex:none;box-shadow:0 0 12px var(--lime-glow)}
+      .rate-dot.is-fallback{background:#e0a03c}
+      .notice{margin-top:22px;padding:14px 16px;border-left:3px solid var(--lime);background:var(--surface);border-radius:0 12px 12px 0;font-size:.9rem;color:var(--muted)}
+      .delivery-notice{margin-top:14px;padding:14px 16px;border-left:3px solid #e0a03c;background:rgba(224,160,60,.08);border-radius:0 12px 12px 0;font-size:.9rem;color:#d8b98a}
+      .table-section{padding:24px 0 64px}
+      table.price-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-lg);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+      table.price-table th,table.price-table td{padding:15px 18px;text-align:right;font-size:.92rem;border-bottom:1px solid var(--line)}
+      table.price-table th:first-child,table.price-table td:first-child{text-align:left}
+      table.price-table thead th{background:var(--surface-2);color:var(--muted);font-weight:700;font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--line-strong)}
+      table.price-table tbody tr:last-child td{border-bottom:0}
+      table.price-table tbody tr:hover{background:rgba(201,242,75,.05)}
+      table.price-table td.pln{font-weight:700;color:var(--lime)}
+      .table-note{margin:16px 0 0;color:var(--muted-2);font-size:.82rem}
+      .cta-block{margin-top:44px;padding:46px;text-align:center;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-lg)}
+      .cta-block .eyebrow{color:var(--lime)}
+      .cta-block h2{font-size:1.8rem;max-width:580px;margin:0 auto}
+      .cta-block p{max-width:540px;margin:14px auto 0;color:var(--muted);font-size:.94rem}
+      .cta-block .button{margin-top:26px;background:var(--lime);color:#0a0a0c;box-shadow:0 0 26px var(--lime-glow)}
+      .cta-note{margin-top:16px;font-size:.78rem;color:var(--muted-2)}
+      footer .footer-inner{width:var(--shell);margin:0 auto;padding:30px 0 50px;color:var(--muted);font-size:.78rem;border-top:1px solid var(--line)}
+      @media (max-width:700px){table.price-table{font-size:.82rem}table.price-table th,table.price-table td{padding:11px 10px}.cta-block{padding:32px 20px}}
+    </style>
+  </head>
+  <body>
+    <div class="grid-bg" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="HomoHumanicus — strona główna">
+        <span class="brand-mark" aria-hidden="true">H</span>
+        <span>Homo<span>Humanicus</span></span>
+      </a>
+      <button class="menu-button" type="button" aria-expanded="false" aria-controls="menu">Menu</button>
+      <nav id="menu" class="main-nav" aria-label="Nawigacja">
+        <a href="index.html#o-nas">Podejście</a>
+        <a href="index.html#technologia">Technologia</a>
+        <a href="index.html#produkty">Produkty</a>
+        <a href="cennik.html" class="is-current">Cennik</a>
+        <a href="certyfikaty.html">Certyfikaty</a>
+        <a href="index.html#kontakt" class="nav-cta">Rozmowa Chat!</a>
+      </nav>
+    </header>
+
+    <main class="section-shell">
+      <section class="hero-block">
+        <p class="eyebrow">Cennik</p>
+        <h1>Ceny w złotówkach, według <em>bieżącego kursu</em>.</h1>
+        <p class="lead">Poniżej znajdziesz przeliczenie cen na PLN według aktualnego średniego kursu NBP, wraz z doliczonym kosztem transportu.</p>
+        <div class="rate-badge" id="rateBadge"><span class="rate-dot" id="rateDot"></span><span id="rateText">Pobieranie aktualnego kursu USD/PLN…</span></div>
+        <p class="notice">Do każdej ceny doliczamy koszt transportu w wysokości <strong>10% wartości produktu</strong>. Kurs waluty aktualizowany jest raz na dobę na podstawie oficjalnego kursu średniego NBP (tabela A).</p>
+        <p class="delivery-notice">🕐 <strong>Czas dostawy: od 4 do 6 tygodni</strong> od potwierdzenia zamówienia.</p>
+      </section>
+
+      <section class="table-section">
+        <table class="price-table" id="priceTable">
+          <thead>
+            <tr>
+              <th>Pozycja</th>
+              <th>Cena bazowa (USD)</th>
+              <th>Transport 10% (USD)</th>
+              <th>Razem (USD)</th>
+              <th>Razem (PLN)</th>
+            </tr>
+          </thead>
+          <tbody id="priceTableBody"><!-- rows injected by JS --></tbody>
+        </table>
+        <p class="table-note">Kwoty PLN są orientacyjne i przeliczane automatycznie według kursu średniego NBP z dnia widocznego powyżej. Ostateczna kwota do zapłaty może nieznacznie różnić się w zależności od kursu obowiązującego w dniu finalizacji zamówienia.</p>
+      </section>
+
+      <section class="cta-block">
+        <p class="eyebrow">Gotowy na zamówienie?</p>
+        <h2>Przejdź do formularza zamówienia.</h2>
+        <p>Po kliknięciu zostaniesz przekierowany do aplikacji zamówieniowej, gdzie wskażesz interesujące Cię produkty i ilości.</p>
+        <a class="button" id="redirectButton" href="https://jankra.thefrequencyawakening.com/pl/products" target="_blank" rel="noopener noreferrer">Przejdź do zamówienia <span aria-hidden="true">→</span></a>
+        <p class="cta-note">Zostaniesz przekierowany na stronę autoryzowanego dystrybutora OlyLife: jankra.thefrequencyawakening.com/pl/products</p>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-inner">
+        <p>Kurs USD/PLN: Narodowy Bank Polski, tabela A (kurs średni). Ceny i przeliczenia mają charakter orientacyjny i nie stanowią wiążącej oferty handlowej. · <a class="footer-link" href="index.html">Wróć na stronę główną</a></p>
+      </div>
+    </footer>
+
+    <script>
+      const menuButton = document.querySelector('.menu-button');
+      const menu = document.querySelector('.main-nav');
+      if (menuButton && menu) {
+        menuButton.addEventListener('click', () => {
+          const open = menu.classList.toggle('is-open');
+          menuButton.setAttribute('aria-expanded', String(open));
+        });
+        menu.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
+          menu.classList.remove('is-open');
+          menuButton.setAttribute('aria-expanded', 'false');
+        }));
+      }
+
+      const amounts = [500, 600, 1000, 1500, 1100, 1200, 1600, 2000, 6000];
+      const FALLBACK_RATE = 4.00;
+
+      function formatUSD(n){ return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+      function formatPLN(n){ return n.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' zł'; }
+
+      function renderTable(rate){
+        const tbody = document.getElementById('priceTableBody');
+        tbody.innerHTML = '';
+        amounts.forEach((base, i) => {
+          const shipping = base * 0.10;
+          const totalUsd = base + shipping;
+          const totalPln = totalUsd * rate;
+          const tr = document.createElement('tr');
+          tr.innerHTML = '<td>Pozycja ' + (i + 1) + '</td><td>' + formatUSD(base) + '</td><td>' + formatUSD(shipping) + '</td><td>' + formatUSD(totalUsd) + '</td><td class="pln">' + formatPLN(totalPln) + '</td>';
+          tbody.appendChild(tr);
+        });
+      }
+
+      function setRateBadge(rate, dateStr, isFallback){
+        const dot = document.getElementById('rateDot');
+        const text = document.getElementById('rateText');
+        dot.classList.toggle('is-fallback', !!isFallback);
+        if (isFallback){
+          text.innerHTML = 'Nie udało się pobrać aktualnego kursu NBP — użyto kursu przybliżonego <strong>1 USD ≈ ' + rate.toFixed(4) + ' PLN</strong>. Sprawdź aktualny kurs na <a href="https://nbp.pl" target="_blank" rel="noopener noreferrer">nbp.pl</a>.';
+        } else {
+          text.innerHTML = 'Kurs NBP z dnia ' + dateStr + ': <strong>1 USD = ' + rate.toFixed(4) + ' PLN</strong>';
+        }
+      }
+
+      async function loadRateAndRender(){
+        try {
+          const res = await fetch('https://api.nbp.pl/api/exchangerates/rates/a/usd/?format=json');
+          if (!res.ok) throw new Error('NBP API error ' + res.status);
+          const data = await res.json();
+          const rateInfo = data.rates[0];
+          setRateBadge(rateInfo.mid, rateInfo.effectiveDate, false);
+          renderTable(rateInfo.mid);
+        } catch (err) {
+          setRateBadge(FALLBACK_RATE, null, true);
+          renderTable(FALLBACK_RATE);
+        }
+      }
+
+      loadRateAndRender();
+    </script>
+    <script src="script.js"></script>
+  </body>
+</html>

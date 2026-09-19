@@ -1,0 +1,12 @@
+﻿# Foxora temp / partial upload artifacts
+*.foxora-meta-tmp
+*.foxora-part
+.aw-*
+
+# Node
+node_modules/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
